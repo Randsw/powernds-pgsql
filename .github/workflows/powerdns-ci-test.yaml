@@ -1,0 +1,33 @@
+---
+name: vrrp-cluster-setup-ci
+on:
+  push:
+    branches:
+      - "main"
+
+jobs:
+  test:
+    name: powerdns-ci-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup Python3
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install test dependencies
+        run: pip install molecule[docker] yamllint ansible-lint ansible docker ansible-core molecule-docker testinfra pytest
+
+      - name: Check molecule version
+        run: molecule --version
+
+      - name: Run Molecule test on vrrp role
+        working-directory: .
+        run: molecule test
+        env:
+          PY_COLORS: '1'
+          ANSIBLE_FORCE_COLOR: '1'

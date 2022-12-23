@@ -1,0 +1,42 @@
+---
+ansible_host: 192.168.0.191
+ansible_user: vagrant
+ansible_ssh_private_key_file: "./.vagrant/machines/{{ inventory_hostname }}/virtualbox/private_key"
+
+postgresql_bin_dir: "/usr/lib/postgresql/{{ patroni_postgresql_version }}/bin"
+postgres_users_no_log: false
+postgresql_service_state: started
+postgresql_service_enabled: true
+postgresql_restarted_state: "restarted"
+
+pdns_database: pdns
+pdns_postgres_user: pdns
+pdns_user_password: pdns
+pdns_postgresql_schema_file: /usr/share/pdns-backend-pgsql/schema/schema.pgsql.sql
+
+# Powernds user and database
+postgresql_databases:
+  - name: "{{ pdns_database }}" # required; the rest are optional
+    owner: "{{ pdns_postgres_user }}" # defaults to postgresql_user
+    state: present # defaults to 'present'
+
+postgresql_users:
+  - name: "{{ pdns_postgres_user }}" #required; the rest are optional
+    password: "{{ pdns_user_password }}" # defaults to not set
+    db: "{{ pdns_database }}" # defaults to not set
+    state: present # defaults to 'present'
+
+# PowerDNS config
+pdns_config:
+  master: true
+  slave: false
+  local-port: 5300
+  webserver: yes
+
+# PowerDNS backend configuration
+pdns_backends:
+  'gpgsql:server':
+    host: localhost
+    user: "{{ pdns_postgres_user }}"
+    password: "{{ pdns_user_password }}"
+    dbname: "{{ pdns_database }}"

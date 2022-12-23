@@ -1,0 +1,45 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  vars:
+    pdns_database: pdns
+    pdns_postgres_user: pdns
+    pdns_user_password: pdns
+    example_domain: test.example.com
+    example_domain_ip: 192.168.100.20
+  tasks:
+  post_tasks:
+
+    - name: Ping PostgreSQL server
+      community.postgresql.postgresql_ping:
+        db: "{{ pdns_database }}"
+        login_host: localhost
+        login_user: "{{ pdns_postgres_user }}"
+        login_password: "{{ pdns_user_password }}"
+      register: result
+
+    - name: Check postgres is online
+      ansible.builtin.assert:
+        that:
+          - result.is_available == true
+
+    - name: Check a pdns service unit
+      ansible.builtin.systemd:
+        state: started
+        name: pdns
+      register: pdns_result
+
+    - name: Make sure a pdns service unit is running
+      ansible.builtin.assert:
+        that:
+          - pdns_result.status.SubState == "running"
+
+    - name: Find test domain ip
+      ansible.builtin.command: dig @127.0.0.1 -p 5300 {{ example_domain }} +short
+      register: resolve_example
+
+    - name: Check ip is correct
+      ansible.builtin.assert:
+        that:
+          - example_domain_ip in resolve_example.stdout

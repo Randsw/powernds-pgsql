@@ -1,0 +1,100 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: yes
+  vars:
+    postgresql_bin_dir: "/usr/lib/postgresql/{{ patroni_postgresql_version }}/bin"
+    postgres_users_no_log: false
+    postgresql_service_state: started
+    postgresql_service_enabled: true
+    postgresql_restarted_state: "restarted"
+
+    pdns_database: pdns
+    pdns_postgres_user: pdns
+    pdns_user_password: pdns
+    pdns_postgresql_schema_file: /usr/share/pdns-backend-pgsql/schema/schema.pgsql.sql
+
+    # Powernds user and database
+
+    postgresql_databases:
+      - name: "{{ pdns_database }}" # required; the rest are optional
+        owner: "{{ pdns_postgres_user }}" # defaults to postgresql_user
+        state: present # defaults to 'present'
+
+    postgresql_users:
+      - name: "{{ pdns_postgres_user }}" #required; the rest are optional
+        password: "{{ pdns_user_password }}" # defaults to not set
+        db: "{{ pdns_database }}" # defaults to not set
+        state: present # defaults to 'present'
+
+    # PowerDNS config
+    pdns_config:
+      master: true
+      slave: false
+      local-port: 5300
+      webserver: yes
+
+    # PowerDNS backend configuration
+    pdns_backends:
+      'gpgsql:server':
+        host: localhost
+        user: "{{ pdns_postgres_user }}"
+        password: "{{ pdns_user_password }}"
+        dbname: "{{ pdns_database }}"
+
+  pre_tasks:
+    - name: Run the equivalent of "apt-get update" as a separate step
+      apt:
+        update_cache: yes
+
+  post_tasks:
+    - name: Install pip
+      ansible.builtin.package:
+        name: "python3-pip"
+        state: present
+
+    - name: Install psycopg2
+      ansible.builtin.pip:
+        name: "{{ item }}"
+      loop:
+        - psycopg2
+
+    - name: Import the PowerDNS Posthresql schema
+      community.postgresql.postgresql_db:
+        login_user: "{{ pdns_postgres_user }}"
+        login_password: "{{ pdns_user_password }}"
+        login_host: "localhost"
+        name: "{{ pdns_database }}"
+        state: restore
+        target: "{{ pdns_postgresql_schema_file }}"
+      tags:
+        - molecule-idempotence-notest
+
+    - name: Create zone and add 2 dns entry
+      block:
+        - name: Create test zone
+          ansible.builtin.command: pdnsutil create-zone example.com
+          changed_when: false
+
+        - name: Create record for ns1
+          ansible.builtin.command: pdnsutil add-record example.com ns1 A 192.168.100.10
+          changed_when: false
+
+        - name: Define nameserver
+          ansible.builtin.command: pdnsutil add-record example.com @ NS ns1.example.com
+          changed_when: false
+
+        - name: Add first record
+          ansible.builtin.command: pdnsutil add-record example.com @ A 192.168.100.15
+          changed_when: false
+
+        - name: Add second record
+          ansible.builtin.command: pdnsutil add-record example.com www A 172.16.5.20
+          changed_when: false
+      tags:
+        - molecule-idempotence-notest
+
+  roles:
+    - { role: geerlingguy.postgresql }
+    - { role: powerdns.pdns }
