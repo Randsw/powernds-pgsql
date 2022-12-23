@@ -25,7 +25,7 @@ jobs:
       - name: Check molecule version
         run: molecule --version
 
-      - name: Run Molecule test on vrrp role
+      - name: Run Molecule test on PowerDNS role
         working-directory: .
         run: molecule test
         env:
