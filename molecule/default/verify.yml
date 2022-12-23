@@ -35,6 +35,11 @@
         that:
           - pdns_result.status.SubState == "running"
 
+    - name: Install dig
+      ansible.builtin.package:
+        name: dnsutils
+        state: present
+
     - name: Find test domain ip
       ansible.builtin.command: dig @127.0.0.1 -p 5300 {{ example_domain }} +short
       register: resolve_example

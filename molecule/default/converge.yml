@@ -90,7 +90,7 @@
           changed_when: false
 
         - name: Add second record
-          ansible.builtin.command: pdnsutil add-record example.com www A 172.16.5.20
+          ansible.builtin.command: pdnsutil add-record example.com test A 192.168.100.20
           changed_when: false
       tags:
         - molecule-idempotence-notest
