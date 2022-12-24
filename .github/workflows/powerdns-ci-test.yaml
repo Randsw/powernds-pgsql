@@ -1,5 +1,5 @@
 ---
-name: vrrp-cluster-setup-ci
+name: powerdns-setup-ci
 on:
   push:
     branches:
